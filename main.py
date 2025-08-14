@@ -203,7 +203,7 @@ class MiMotion():
             print("初始化步数失败: 已将最大值设置为 19999", e)
             max_step = 19999
 
-        step = str(random.randint(min_step, max_step))
+        step = 12200
         if ("+86" in user) or "@" in user:
             user = user
         else:
