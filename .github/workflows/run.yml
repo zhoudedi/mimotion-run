@@ -1,10 +1,11 @@
 name: 刷步数
 
 on:
-  #push:
-  #  branches: [ master ]
-  #pull_request:
-  #  branches: [ master ]
+  push:
+  with open("log.txt", "a", encoding="utf-8") as log_file:log_file.write(f"{current_time}-{'Success' if success else 'Failed'}-{execution_time:.2f}s\n")
+  branches: [ master ]
+  pull_request:
+  branches: [ master ]
   schedule:
     - cron: '13 22,0,2,4,6,8,10,12,14 * * *'
   watch:
