@@ -139,7 +139,7 @@ class MiMotion():
             "country_code": "CN",
             "json_response": "true",
             "name": user,
-            "password": "******",  # 日志中隐藏密码
+            "password": "password",  # 日志中隐藏密码
             "redirect_uri": "https://s3-us-west-2.amazonaws.com/hm-registration/successsignin.html",
             "state": "REDIRECTION",
             "token": "access"
