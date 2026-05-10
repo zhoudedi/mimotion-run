@@ -139,14 +139,20 @@ class MiMotion():
             "country_code": "CN",
             "json_response": "true",
             "name": user,
-            "password": password,
+            "password": "******",  # 日志中隐藏密码
             "redirect_uri": "https://s3-us-west-2.amazonaws.com/hm-registration/successsignin.html",
             "state": "REDIRECTION",
             "token": "access"
         }
 
+        print(f"[DEBUG] [登录阶段1] 请求 URL: {url1}")
+        print(f"[DEBUG] [登录阶段1] 请求 Headers: {headers}")
+        print(f"[DEBUG] [登录阶段1] 请求 Data: {data1}")
+
         try:
             r1 = requests.post(url1, data=data1, headers=headers, timeout=10, allow_redirects=False)
+            print(f"[DEBUG] [登录阶段1] 响应状态码: {r1.status_code}")
+            print(f"[DEBUG] [登录阶段1] 响应内容: {r1.text}")
             if r1.status_code != 200:
                 print(f"[登录阶段1] 状态码={r1.status_code} 响应={r1.text}")
                 return 0, 0, 0
@@ -207,8 +213,13 @@ class MiMotion():
                 "third_name": third_name
             }
 
+        print(f"[DEBUG] [登录阶段2] 请求 URL: {url2}")
+        print(f"[DEBUG] [登录阶段2] 请求 Data: {{...}} (含 code)")
+
         try:
             r2 = requests.post(url2, data=data2, headers=headers, timeout=10)
+            print(f"[DEBUG] [登录阶段2] 响应状态码: {r2.status_code}")
+            print(f"[DEBUG] [登录阶段2] 响应内容: {r2.text}")
             if r2.status_code != 200:
                 print(f"[登录阶段2] 状态码={r2.status_code} 响应={r2.text}")
                 return 0, 0, 0
@@ -222,6 +233,11 @@ class MiMotion():
                 pass
             print("获取 token 失败")
             return 0, 0, 0
+
+
+
+
+    
 
     def main(self):
         import time, random, math, traceback, requests, re
