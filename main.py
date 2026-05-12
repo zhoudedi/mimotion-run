@@ -150,52 +150,45 @@ class MiMotion():
 
         # 第一步：邮箱 → third_name = "email"
         if re.fullmatch(email_pattern, user):
-            user = user
+            processed_user = user
             third_name = "email"
-            self.log("LOGIN", f"账户类型识别", {"type": "邮箱账户", "user": user})
+            self.log("LOGIN", f"账户类型识别", {"type": "邮箱账户", "user": processed_user})
 
         # 第二步：已带+86的手机号 → third_name = "huami_phone"
         elif re.fullmatch(phone_with_86_pattern, user):
-            user = user
+            processed_user = user
             third_name = "huami_phone"
-            self.log("LOGIN", f"账户类型识别", {"type": "国际手机号", "user": user})
+            self.log("LOGIN", f"账户类型识别", {"type": "国际手机号", "user": processed_user})
 
         # 第三步：纯手机号（无+86）→ 补全+86，third_name = "huami_phone"
         elif re.fullmatch(phone_pattern, user):
-            user = f"+86{user}"
+            processed_user = f"+86{user}"
             third_name = "huami_phone"
-            self.log("LOGIN", f"账户类型识别", {"type": "国内手机号", "user": user})
+            self.log("LOGIN", f"账户类型识别", {"type": "国内手机号", "user": processed_user})
 
         # 其他情况 → 保持原样，third_name = "huami_phone"
         else:
-            user = user
+            processed_user = user
             third_name = "huami_phone"
-            self.log("LOGIN", f"账户类型识别", {"type": "其他类型", "user": user})
+            self.log("LOGIN", f"账户类型识别", {"type": "其他类型", "user": processed_user})
         
         """返回 (login_token, user_id, app_token) 任意一步失败返回 (0, 0, msg)"""
         # ---------- 阶段 1：拿 code ----------
-        # 使用PHP版本的API
-        url1 = "https://api-user.zepp.com/v2/registrations/tokens"
+        url1 = f"https://api-user.zepp.com/registrations/{processed_user}/tokens"   # 去空格
         headers = {
             "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-            "User-Agent": "MiFit6.14.0 (OPD2413; Android 15; Density/2.625)",
-            "app_name": "com.xiaomi.hm.health",
-            "appname": "com.xiaomi.hm.health",
-            "appplatform": "android_phone",
-            "Accept": "application/json",
-            "Accept-Language": "zh-CN,zh;q=0.8",
-            "Connection": "keep-alive",
-            "x-hm-ekv": "1"
+            "User-Agent": "MiFit/6.12.0 (MCE16; Android 16; Density/1.5)",
+            "app_name": "com.xiaomi.hm.health"
         }
-        
         data1 = {
-            "emailOrPhone": user,
-            "password": password,
-            "state": "REDIRECTION",
             "client_id": "HuaMi",
             "country_code": "CN",
-            "token": "access",
-            "redirect_uri": "https://s3-us-west-2.amazonaws.com/hm-registration/successsignin.html"
+            "json_response": "true",
+            "name": processed_user,
+            "password": password,
+            "redirect_uri": "https://s3-us-west-2.amazonaws.com/hm-registration/successsignin.html",
+            "state": "REDIRECTION",
+            "token": "access"
         }
 
         self.log("LOGIN_STAGE1", f"阶段1: 获取code", {
@@ -215,51 +208,66 @@ class MiMotion():
                 self.log("ERROR", f"阶段1登录失败", {"response": r1.text})
                 return 0, 0, 0
             
-            # 从响应头中提取access token
-            access = None
-            response_text = r1.text
+            response_json = r1.json()
+            self.log("LOGIN_STAGE1", f"阶段1成功响应", response_json)
             
-            # 尝试从响应头中获取access token
-            if 'access=' in response_text:
-                match = re.search(r'access=([^&]+)', response_text)
-                if match:
-                    access = match.group(1)
-            elif 'refresh=' in response_text:
-                match = re.search(r'refresh=([^&]+)', response_text)
-                if match:
-                    access = match.group(1)
-            
-            if not access:
-                self.log("ERROR", f"未找到access token", {"response": response_text[:200]})
-                return 0, 0, 0
-            
-            self.log("LOGIN_STAGE1", f"获取到access", {"access": access})
+            code = response_json["access"]
+            self.log("LOGIN_STAGE1", f"获取到code", {"code": code})
         except Exception as e:
             self.log("ERROR", f"阶段1登录异常", traceback.format_exc())
+            try:
+                self.log("ERROR", f"阶段1原始响应", {"response": r1.text})
+            except:
+                pass
+            self.log("ERROR", "登录失败")
             return 0, 0, 0
 
         # ---------- 阶段 2：拿 token ----------
         url2 = "https://account.zepp.com/v2/client/login"
-        headers2 = {
-            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-            "User-Agent": "MiFit6.14.0 (OPD2413; Android 15; Density/2.625)",
-            "app_name": "com.xiaomi.hm.health"
-        }
-        
-        data2 = {
-            "app_name": "com.xiaomi.hm.health",
-            "country_code": "CN",
-            "code": access,
-            "device_id": "efd38eeb-160d-44e4-9317-6df2145bcb0a",
-            "device_model": "android_phone",
-            "app_version": "6.14.0",
-            "grant_type": "access_token",
-            "allow_registration": "false",
-            "dn": "account.zepp.com,api-user.zepp.com,api-mifit.zepp.com,api-watch.zepp.com,app-analytics.zepp.com,api-analytics.huami.com,auth.zepp.com",
-            "source": "com.xiaomi.hm.health:6.14.0:50818",
-            "third_name": third_name,
-            "lang": "zh"
-        }
+        if "+86" in processed_user:
+            data2 = {
+                "app_name": "com.xiaomi.hm.health",
+                "country_code": "CN",
+                "code": code,
+                "device_id": "2C8B4939-0CCD-4E94-8CBA-CB8EA6E613A1",
+                "device_model": "android_phone",
+                "app_version": "6.12.0",
+                "grant_type": "access_token",
+                "allow_registration": "false",
+                "dn": "account.zepp.com,api-user.zepp.com,api-mifit.zepp.com,api-watch.zepp.com,app-analytics.zepp.com,api-analytics.huami.com,auth.zepp.com",
+                "source": "com.xiaomi.hm.health",
+                "third_name": third_name
+            }
+        elif "@" in processed_user:
+            data2 = {
+                "app_name": "com.xiaomi.hm.health",
+                "country_code": "CN",
+                "code": code,
+                "device_id": "2C8B4939-0CCD-4E94-8CBA-CB8EA6E613A1",
+                "device_model": "phone",
+                "app_version": "6.5.5",
+                "grant_type": "access_token",
+                "allow_registration": "false",
+                "dn": "api-user.huami.com,api-mifit.huami.com,app-analytics.huami.com",
+                "source": "com.xiaomi.hm.health",
+                "third_name": third_name,
+                "os_version": "1.5.0",
+                "lang": "zh_CN"
+            }
+        else:  # 兜底
+            data2 = {
+                "app_name": "com.xiaomi.hm.health",
+                "country_code": "CN",
+                "code": code,
+                "device_id": "2C8B4939-0CCD-4E94-8CBA-CB8EA6E613A1",
+                "device_model": "android_phone",
+                "app_version": "6.12.0",
+                "grant_type": "access_token",
+                "allow_registration": "false",
+                "dn": "account.zepp.com,api-user.zepp.com,api-mifit.zepp.com,api-watch.zepp.com,app-analytics.zepp.com,api-analytics.huami.com,auth.zepp.com",
+                "source": "com.xiaomi.hm.health",
+                "third_name": third_name
+            }
 
         self.log("LOGIN_STAGE2", f"阶段2: 获取token", {
             "url": url2,
@@ -267,7 +275,7 @@ class MiMotion():
         })
 
         try:
-            r2 = requests.post(url2, data=data2, headers=headers2, timeout=10)
+            r2 = requests.post(url2, data=data2, headers=headers, timeout=10)
             self.log("LOGIN_STAGE2", f"阶段2响应状态", {
                 "status_code": r2.status_code,
                 "headers": dict(r2.headers)
@@ -279,10 +287,6 @@ class MiMotion():
             
             response_json = r2.json()
             self.log("LOGIN_STAGE2", f"阶段2成功响应", response_json)
-            
-            if response_json.get("result") != "ok":
-                self.log("ERROR", f"登录失败", {"response": response_json})
-                return 0, 0, 0
             
             info = response_json["token_info"]
             self.log("LOGIN_STAGE2", f"提取的token信息", {
@@ -296,6 +300,11 @@ class MiMotion():
             return info["login_token"], info["user_id"], info["app_token"]
         except Exception as e:
             self.log("ERROR", f"阶段2登录异常", traceback.format_exc())
+            try:
+                self.log("ERROR", f"阶段2原始响应", {"response": r2.text})
+            except:
+                pass
+            self.log("ERROR", "获取 token 失败")
             return 0, 0, 0
 
     def main(self):
@@ -377,8 +386,8 @@ class MiMotion():
     
         # ---------- 4. 提交步数 ----------
         try:
-            t = int(time.time())
-            today = time.strftime("%Y-%m-%d")
+            t = self.get_time()
+            today = time.strftime("%F")
             self.log("SUBMIT_PREPARE", f'提交准备', {
                 "时间戳": t,
                 "今日日期": today,
@@ -404,24 +413,9 @@ class MiMotion():
                 "是否包含目标步数": step in data_json
             })
     
-            # 使用与PHP版本相同的API端点
-            url = f'https://api-mifit-cn.zepp.com/v1/data/band_data.json?&t={t}'
-            
-            # 设置与PHP版本相同的headers
-            headers = {
-                "apptoken": app_token, 
-                "Content-Type": "application/x-www-form-urlencoded",
-                "Accept": "application/json",
-                "Accept-Language": "zh-CN,zh;q=0.8",
-                "Connection": "keep-alive",
-                "app_name": "com.xiaomi.hm.health",
-                "appname": "com.xiaomi.hm.health",
-                "appplatform": "android_phone",
-                "User-Agent": "MiFit6.14.0 (OPD2413; Android 15; Density/2.625)"
-            }
-            
-            # 使用与PHP版本相同的设备ID
-            data = f'data_json={data_json}&userid={userid}&device_type=0&last_sync_data_time={t}&last_deviceid=C4D2D4FFFE8C5068'
+            url = f'https://api-mifit-cn.huami.com/v1/data/band_data.json?t={t}'
+            headers = {"apptoken": app_token, "Content-Type": "application/x-www-form-urlencoded"}
+            data = f'userid={userid}&last_sync_data_time=1628256960&device_type=0&last_deviceid=C4BDB6FFFE2BCA4C&data_json={data_json}'
             
             self.log("SUBMIT", f"提交步数请求", {
                 "url": url,
@@ -443,11 +437,11 @@ class MiMotion():
             res_json = resp.json()
             self.log("SUBMIT", f"提交步数响应JSON", res_json)
             
-            if res_json.get('code') == 1 or res_json.get('message') == 'success':
+            if res_json.get('message') == 'success':
                 msg = (f"帐号信息: {account_user[:4]}****{account_user[-4:]}\n"
                        f"修改信息: success\n"
                        f"修改步数: {step}\n")
-                self.log("SUCCESS", f"步数修改成功", {"message": res_json.get('message'), "code": res_json.get('code'), "step": step})
+                self.log("SUCCESS", f"步数修改成功", {"message": res_json.get('message'), "step": step})
             else:
                 msg = (f"帐号信息: {account_user[:4]}****{account_user[-4:]}\n"
                        f"修改信息: 失败-{res_json}\n")
