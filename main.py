@@ -457,12 +457,31 @@ class MiMotion():
 
 if __name__ == "__main__":
     try:
-        self.log("SYSTEM", f"程序启动", {"时间": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
+        # 添加一个简单的日志函数，用于主程序的日志记录
+        def log_main(level, message, data=None):
+            """主程序使用的简单日志函数"""
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+            log_msg = f"[{timestamp}] [{level}] {message}"
+            
+            if data is not None:
+                if isinstance(data, (dict, list)):
+                    try:
+                        data_str = json.dumps(data, indent=2, ensure_ascii=False, default=str)
+                    except:
+                        data_str = str(data)
+                else:
+                    data_str = str(data)
+                log_msg += f"\n{data_str}"
+            
+            print(log_msg)
+            print("-" * 80)
+        
+        log_main("SYSTEM", f"程序启动", {"时间": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
         
         #with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "/root/config.json"), "r", encoding="utf-8") as f:
             #datas = json.loads(f.read())
         datas = json.loads(os.environ["CONFIG"])
-        self.log("CONFIG", f"加载配置", {"config_keys": list(datas.keys())})
+        log_main("CONFIG", f"加载配置", {"config_keys": list(datas.keys())})
         
         # 开启根据地区天气情况降低步数（默认关闭）
         if datas.get("OPEN_GET_WEATHER"):
@@ -480,7 +499,7 @@ if __name__ == "__main__":
         else:
             qweather = "False"
             
-        self.log("CONFIG_DETAIL", f"配置详情", {
+        log_main("CONFIG_DETAIL", f"配置详情", {
             "OPEN_GET_WEATHER": open_get_weather,
             "AREA": area,
             "qweather": qweather
@@ -488,31 +507,31 @@ if __name__ == "__main__":
             
         msg = ""
         mimotion_items = datas.get("MIMOTION", [])
-        self.log("ACCOUNTS", f"账号列表", {"账号数量": len(mimotion_items)})
+        log_main("ACCOUNTS", f"账号列表", {"账号数量": len(mimotion_items)})
         
         for i in range(len(mimotion_items)):
-            self.log("ACCOUNT_PROCESS", f"开始处理第{i+1}个账号", {"index": i, "item": mimotion_items[i]})
+            log_main("ACCOUNT_PROCESS", f"开始处理第{i+1}个账号", {"index": i, "item": mimotion_items[i]})
             _check_item = mimotion_items[i]
             msg += MiMotion(check_item=_check_item).main()
             time.sleep(10)
             
-        self.log("SUMMARY", f"所有账号处理完成", {"总消息长度": len(msg)})
+        log_main("SUMMARY", f"所有账号处理完成", {"总消息长度": len(msg)})
         
         # 酷推skey和server酱sckey和企业微信设置，只用填一个其它留空即可
         if datas.get("SKEY"):
             skey = datas.get("SKEY")
-            self.log("PUSH_CONFIG", f"配置酷推推送", {"skey": skey})
+            log_main("PUSH_CONFIG", f"配置酷推推送", {"skey": skey})
             MiMotion(check_item=_check_item).push('【小米运动步数修改】', msg)
         # 推送server酱
         if datas.get("SCKEY"):
             sckey = datas.get("SCKEY")
-            self.log("PUSH_CONFIG", f"配置Server酱推送", {"sckey": sckey})
+            log_main("PUSH_CONFIG", f"配置Server酱推送", {"sckey": sckey})
             MiMotion(check_item=_check_item).push_wx(msg)
         # 推送telegram
         if datas.get("TG_BOT_TOKEN") or datas.get("TG_USER_ID") :
             tg_bot_token = datas.get("TG_BOT_TOKEN")
             tg_user_id = datas.get("TG_USER_ID")
-            self.log("PUSH_CONFIG", f"配置Telegram推送", {
+            log_main("PUSH_CONFIG", f"配置Telegram推送", {
                 "tg_bot_token": tg_bot_token,
                 "tg_user_id": tg_user_id
             })
@@ -530,7 +549,7 @@ if __name__ == "__main__":
             toparty = datas.get("TOPARTY")  # 指定接收消息的部门，部门ID列表，多个接收者用'|'分隔，最多支持100个。当touser为"@all"时忽略本参数
             totag = datas.get("TOTAG")  # 指定接收消息的标签，标签ID列表，多个接收者用'|'分隔，最多支持100个。当touser为"@all"时忽略本参数
             
-            self.log("PUSH_CONFIG", f"配置企业微信推送", {
+            log_main("PUSH_CONFIG", f"配置企业微信推送", {
                 "corpid": corpid,
                 "corpsecret": corpsecret,
                 "agentid": agentid,
@@ -543,9 +562,9 @@ if __name__ == "__main__":
         #推送CONFIG配置
         #MiMotion(check_item=_check_item).run(os.environ["CONFIG"])
         
-        self.log("SYSTEM", f"程序结束", {"时间": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
+        log_main("SYSTEM", f"程序结束", {"时间": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
         
     except Exception as e:
         # 获取报错位置的详细信息
         error_traceback = traceback.format_exc()
-        self.log("ERROR", f"主程序异常", error_traceback)
+        log_main("ERROR", f"主程序异常", error_traceback)
