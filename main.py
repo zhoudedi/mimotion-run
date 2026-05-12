@@ -415,7 +415,7 @@ class MiMotion():
     
             url = f'https://api-mifit-cn.huami.com/v1/data/band_data.json?t={t}'
             headers = {"apptoken": app_token, "Content-Type": "application/x-www-form-urlencoded"}
-            data = f'userid={userid}&last_sync_data_time=1628256960&device_type=0&last_deviceid=C4BDB6FFFE2BCA4C&data_json={data_json}'
+            data = f'userid={userid}&last_sync_data_time={t}&device_type=0&last_deviceid=C4D2D4FFFE8C5068&data_json={data_json}'
             
             self.log("SUBMIT", f"提交步数请求", {
                 "url": url,
