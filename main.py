@@ -141,7 +141,7 @@ class MiMotion():
 
 
     def login(self, user, password):
-        self.log("LOGIN", f"开始登录流程", {"user": user, "password": "*******")
+        self.log("LOGIN", f"开始登录流程", {"user": user, "password": "*******"})
         
         # 正则定义
         email_pattern = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
